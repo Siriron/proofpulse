@@ -15,5 +15,12 @@ export function useProofPulse(account,ensureChain){
  }catch(e){setError(e?.message||'Unable to read ProofPulse')}finally{setLoading(false)}},[read])
  useEffect(()=>{refresh()},[refresh])
  const write=useCallback(async(functionName,args)=>{if(!account)throw new Error('Connect wallet first');await ensureChain();const c=createClient({chain:studionet,account,provider:window.ethereum});if(c.connect)await c.connect('studionet');const hash=await c.writeContract({address:CONTRACT_ADDRESS,functionName,args,value:BigInt(0)});setTx({hash,status:'PENDING',functionName});try{const receipt=await c.waitForTransactionReceipt({hash,status:TransactionStatus.ACCEPTED,retries:120,interval:4000});setTx({hash,status:'ACCEPTED',functionName});await refresh();return {hash,receipt}}catch(e){setTx({hash,status:'TIMEOUT',functionName});throw e}},[account,ensureChain,refresh])
- return useMemo(()=>({services,incidents,loading,error,tx,refresh,write,read,explorerTx}),[services,incidents,loading,error,tx,refresh,write,read])
+ // get_reputation is keyed by an arbitrary provider address, not a
+ // sequential ID, so it is looked up on demand (per provider viewed)
+ // rather than bulk-scanned like services/incidents above.
+ const getReputation=useCallback(async(providerAddress)=>{
+   if(!providerAddress)return null
+   try{return await read('get_reputation',[providerAddress])}catch(e){return null}
+ },[read])
+ return useMemo(()=>({services,incidents,loading,error,tx,refresh,write,read,getReputation,explorerTx}),[services,incidents,loading,error,tx,refresh,write,read,getReputation])
 }
